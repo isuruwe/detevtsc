@@ -1,0 +1,202 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+
+    <meta charset="utf-8">
+    <title>Creating a Custom Popup</title>
+    <style>
+        /* Always set the map height explicitly to define the size of the div
+        * element that contains the map. */
+        #map {
+            height: 100%;
+        }
+        /* Optional: Makes the sample page fill the window. */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        /* The location pointed to by the popup tip. */
+        .popup-tip-anchor {
+            height: 0;
+            position: absolute;
+            /* The max width of the info window. */
+            width: 200px;
+        }
+        /* The bubble is anchored above the tip. */
+        .popup-bubble-anchor {
+            position: absolute;
+            width: 100%;
+            bottom: /* TIP_HEIGHT= */ 8px;
+            left: 0;
+        }
+            /* Draw the tip. */
+            .popup-bubble-anchor::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                /* Center the tip horizontally. */
+                transform: translate(-50%, 0);
+                /* The tip is a https://css-tricks.com/snippets/css/css-triangle/ */
+                width: 0;
+                height: 0;
+                /* The tip is 8px high, and 12px wide. */
+                border-left: 6px solid transparent;
+                border-right: 6px solid transparent;
+                border-top: /* TIP_HEIGHT= */ 8px solid white;
+            }
+        /* The popup bubble itself. */
+        .popup-bubble-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -100%);
+            /* Style the info window. */
+            background-color: white;
+            padding: 5px;
+            border-radius: 5px;
+            font-family: sans-serif;
+            overflow-y: auto;
+            max-height: 60px;
+            box-shadow: 0px 2px 10px 1px rgba(0,0,0,0.5);
+        }
+    </style>
+
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="/resources/demos/style.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+</head>
+<body>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <div id="map"></div>
+    <script type="text/javascript">
+        var map;
+        var geocoder;
+        var flightPath;
+        var marker;
+        var mydata;
+
+        function locate() {
+            initMap();
+            firstDraw();
+            setInterval(updateMap, 5000);
+        }
+
+        //Initiate map
+        function initMap() {
+            var mapProp = {
+                zoom: 13,
+                center: {
+                    lat: 0,
+                    lng: 0
+                },
+                mapTypeId: 'satellite'
+            };
+            map = new google.maps.Map(document.getElementById("map"), mapProp);
+            geocoder = new google.maps.Geocoder;
+        }
+
+        //draw for the first time
+        function firstDraw() {
+
+            var client = new HttpClient();
+            client.get('http://203.115.24.227:8888/detevts/getvts.ashx?p1=1', function (result) {
+
+                var i;
+                var cordinates = [];
+                debugger;
+                mydata = JSON.parse(result);
+                var fields = mydata.Table[0].locdata.replace(/[""]/g, '*');
+
+                fields = fields.split('*');
+
+
+                //fields.splice(0, 1);
+                //fields.splice(fields.length - 1, 1);
+                //for (var i = 0, l = fields.length; i < l; i++) {
+
+                //    var index = fields.indexOf("");
+                //    if (index > -1) {
+                //        fields.splice(index, 1);
+                //    }
+                //}
+                var myJsonString = JSON.stringify(fields);
+                var resultArray = JSON.parse(myJsonString);
+
+                cordinates[0] = {
+                    lat: Number(resultArray[0]),
+                    lng: Number(resultArray[1])
+                };
+
+                flightPath = new google.maps.Polyline({
+                    path: cordinates,
+                    geodesic: true,
+                    strokeColor: '#FF0000',
+                    strokeOpacity: 1.0,
+                    strokeWeight: 2
+                });
+                flightPath.setMap(map);
+                map.setCenter(cordinates[cordinates.length - 1]);
+                var marker = new google.maps.Marker({
+                    position: cordinates[cordinates.length - 1],
+                    map: map,
+                    icon:'a.png',
+                    title: "Last Seen",
+                });
+
+//                google.maps.event.addListener(marker, "load", function() {
+//        marker.setIcon('a.png'); // set image path here...
+//});
+
+            });
+        }
+
+        function updateMap() {
+            var client = new HttpClient();
+            client.get('http://203.115.24.227:8888/detevts/getvts.ashx?p1=1', function (result) {
+
+                var path = flightPath.getPath();
+                mydata = JSON.parse(result);
+                var fields = mydata.Table[0].locdata.replace(/[""]/g, '*');
+
+                fields = fields.split('*');
+                 //debugger;
+
+                //fields.splice(0, 1);
+                //fields.splice(fields.length - 1, 1);
+                //for (var i = 0, l = fields.length; i < l; i++) {
+
+                //    var index = fields.indexOf("");
+                //    if (index > -1) {
+                //        fields.splice(index, 1);
+                //    }
+                //}
+                var myJsonString = JSON.stringify(fields);
+                var resultArray = JSON.parse(myJsonString);
+                var newCord = new google.maps.LatLng(Number(resultArray[0]), Number(resultArray[1]));
+                path.push(newCord);
+                flightPath.setPath(path);
+            });
+        }
+
+        var HttpClient = function () {
+            this.get = function (aUrl, aCallback) {
+
+                var anHttpRequest = new XMLHttpRequest();
+                anHttpRequest.onreadystatechange = function () {
+                    if (anHttpRequest.readyState == 4 && anHttpRequest.status == 200)
+                        aCallback(anHttpRequest.responseText);
+                }
+
+                anHttpRequest.open("GET", aUrl, true);
+                anHttpRequest.send(null);
+            }
+        }
+
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAhzrilThVeKGILy6rAQlOcyME8DVEvW2M&callback=locate"></script>
+</body>
+</html>

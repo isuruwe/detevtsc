@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Hiru</title>
+    <style>
+        /* Always set the map height explicitly to define the size of the div
+        * element that contains the map. */
+        #map {
+            height: 100%;
+        }
+        /* Optional: Makes the sample page fill the window. */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="/resources/demos/style.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+</head>
+<body>
+    <p>From: <input type="text" id="datepicker1" size="30"></p>
+    <p>To: <input type="text" id="datepicker2" size="30"></p>
+    <p>To: <input type="button" id="button" value="Load"></p>
+    <script>
+  $( function() {
+    $( "#datepicker1" ).datepicker();
+  } );
+ $( function() {
+    $( "#datepicker2" ).datepicker();
+  } );
+
+$('#button').click(function(){
+  initMap();
+
+});
+
+    </script>
+    </div>
+    <div id="map"></div>
+    <script>
+        var flightPlanCoordinates;
+      // This example creates a 2-pixel-wide red polyline showing the path of William
+      // Kingsford Smith's first trans-Pacific flight between Oakland, CA, and
+      // Brisbane, Australia.
+
+      function initMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 7,
+          center: {lat: 7.8731, lng: 80.7718},
+          mapTypeId: 'satellite'
+        });
+
+var dt1= $('#datepicker1').val();
+var dt2= $('#datepicker2').val();
+var params = { dt1:dt1, dt2:dt2 };
+var str = jQuery.param( params );
+
+        
+        var client = new HttpClient();
+        client.get('http://203.115.24.227:8888/detevts/getvts.ashx?p1=1', function (response) {
+          debugger;
+
+  var fields = response.replace(/[""]/g,'*');
+
+fields =fields.split('*') ;
+
+
+ fields.splice(0, 1);
+fields.splice(fields.length-1, 1);
+for (var i=0, l=fields.length; i<l; i++) {
+
+var index = fields.indexOf("");
+if (index > -1) {
+    fields.splice(index, 1);
+}
+}
+var myJsonString = JSON.stringify(fields);
+var resultArray = JSON.parse(myJsonString);
+
+var triangleCoordsLS12 = []
+for (var i=0; i<resultArray.length; i++) {
+    triangleCoordsLS12[i] = new google.maps.LatLng(resultArray[i].substr(0, resultArray[i].indexOf(',')),resultArray[i].substr(resultArray[i].indexOf(",") + 1));
+}
+           // var name = fields[0];
+           // var street = fields[1];
+            flightPlanCoordinates = triangleCoordsLS12;
+//[{ lat: name, lng: street }];
+           // alert(response);
+//alert(flightPlanCoordinates );
+        var flightPath = new google.maps.Polyline({
+          path: flightPlanCoordinates,
+          geodesic: true,
+          strokeColor: '#FF0000',
+          strokeOpacity: 1.0,
+          strokeWeight: 2
+        });
+
+        flightPath.setMap(map);
+        });
+       // flightPlanCoordinates = [
+        //  {lat: 37.772, lng: -122.214},
+        //  {lat: 21.291, lng: -157.821},
+         // {lat: -18.142, lng: 178.431},
+        //  {lat: -27.467, lng: 153.027}
+       // ];
+
+      }
+      var HttpClient = function () {
+          this.get = function (aUrl, aCallback) {
+
+              var anHttpRequest = new XMLHttpRequest();
+              anHttpRequest.onreadystatechange = function () {
+                  if (anHttpRequest.readyState == 4 && anHttpRequest.status == 200)
+                      aCallback(anHttpRequest.responseText);
+              }
+
+              anHttpRequest.open("GET", aUrl, true);
+              anHttpRequest.send(null);
+          }
+      }
+      function updateMap() {
+          var client = new HttpClient();
+          client.get('http://203.115.24.227:8888/gbs/getgbs.ashx?p1=1', function (response) {
+              // debugger;
+
+              var fields = response.replace(/[""]/g, '*');
+
+              fields = fields.split('*');
+              //alert(fields);
+              mydata = JSON.parse(response);
+              //alert(mydata.toString());
+              //var   myJsonString = JSON.stringify(mydata);
+              //alert(mydata.Table[0].tempi);
+              // alert(mydata["0"].humi);
+              // alert(mydata["0"].distan);
+              //alert(mydata["0"].createddate);
+
+              var path = flightPath.getPath();
+              var newCord = new google.maps.LatLng(Number(result.feeds[0].latitude), Number(result.feeds[0].longitude));
+              path.push(newCord);
+              flightPath.setPath(path);
+          });
+
+         
+      }
+    </script>
+    <script async defer
+            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAhzrilThVeKGILy6rAQlOcyME8DVEvW2M&callback=initMap">
+    </script>
+</body>
+</html>
